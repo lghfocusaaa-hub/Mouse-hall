@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管理员面板 - 鼠标大厅</title>
+<style>
+  :root{
+    --bg:#1a1a2e;
+    --surface:#16213e;
+    --card:#0f3460;
+    --accent:#e94560;
+    --accent2:#533483;
+    --text:#eee;
+    --muted:#8892a4;
+    --line:rgba(255,255,255,.08);
+    --success:#4ade80;
+    --warn:#fbbf24;
+    --danger:#ef4444;
+    --radius:12px;
+    --shadow:0 4px 24px rgba(0,0,0,.3);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,"PingFang SC","Microsoft YaHei",sans-serif;
+    color:var(--text);
+    background:var(--bg);
+    overflow:hidden;
+  }
+
+  /* 登录页 */
+  .login-wrap{
+    position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg, var(--bg) 0%, #0a0a1a 100%);
+  }
+  .login-wrap.hidden{display:none;}
+  .login-card{
+    background:var(--surface);border:1px solid var(--line);
+    border-radius:20px;padding:40px 36px;width:380px;text-align:center;
+    box-shadow:var(--shadow);
+  }
+  .login-card h1{font-size:24px;margin-bottom:6px;letter-spacing:1px;}
+  .login-card .sub{font-size:12px;color:var(--muted);margin-bottom:28px;}
+  .login-card input{
+    width:100%;padding:12px 16px;border:1px solid var(--line);
+    border-radius:10px;background:rgba(255,255,255,.05);color:var(--text);
+    font-size:14px;outline:none;margin-bottom:14px;font-family:inherit;
+  }
+  .login-card input:focus{border-color:var(--accent);}
+  .login-card input::placeholder{color:var(--muted);}
+  .login-card button{
+    width:100%;padding:12px;border:none;border-radius:10px;
+    background:var(--accent);color:#fff;font-size:14px;font-weight:600;
+    cursor:pointer;transition:opacity .15s;font-family:inherit;
+  }
+  .login-card button:hover{opacity:.9;}
+  .login-card button:disabled{opacity:.5;cursor:default;}
+  .login-card .err{color:var(--danger);font-size:12px;margin-top:10px;min-height:18px;}
+
+  /* 管理面板 */
+  .admin-panel{display:none;height:100vh;flex-direction:column;}
+  .admin-panel.show{display:flex;}
+
+  /* 顶栏 */
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 24px;border-bottom:1px solid var(--line);
+    background:var(--surface);flex-shrink:0;
+  }
+  .topbar .left{display:flex;align-items:center;gap:12px;}
+  .topbar .logo{font-size:16px;font-weight:700;letter-spacing:.5px;}
+  .topbar .badge{
+    font-size:11px;padding:3px 10px;border-radius:8px;
+    background:var(--accent);color:#fff;font-weight:600;
+  }
+  .topbar .conn{
+    font-size:11px;padding:3px 10px;border-radius:8px;
+  }
+  .topbar .conn.on{background:rgba(74,222,128,.15);color:var(--success);}
+  .topbar .conn.off{background:rgba(239,68,68,.15);color:var(--danger);}
+
+  /* 标签栏 */
+  .tabs{
+    display:flex;gap:0;border-bottom:1px solid var(--line);
+    background:var(--surface);flex-shrink:0;padding:0 24px;
+  }
+  .tab{
+    padding:10px 20px;font-size:13px;color:var(--muted);
+    cursor:pointer;border-bottom:2px solid transparent;
+    transition:color .15s,border-color .15s;user-select:none;
+  }
+  .tab:hover{color:var(--text);}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+  /* 内容区 */
+  .content{flex:1;overflow-y:auto;padding:20px 24px;}
+  .content::-webkit-scrollbar{width:6px;}
+  .content::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:4px;}
+
+  /* 用户表格 */
+  .user-table{width:100%;border-collapse:collapse;}
+  .user-table th{
+    text-align:left;font-size:11px;color:var(--muted);
+    padding:8px 12px;border-bottom:1px solid var(--line);
+    font-weight:600;text-transform:uppercase;letter-spacing:.5px;
+  }
+  .user-table td{
+    padding:10px 12px;border-bottom:1px solid var(--line);
+    font-size:13px;vertical-align:middle;
+  }
+  .user-table tr:hover{background:rgba(255,255,255,.02);}
+  .user-table .u-name{display:flex;align-items:center;gap:8px;}
+  .user-table .u-avatar{
+    width:28px;height:28px;border-radius:50%;
+    display:grid;place-items:center;font-size:14px;
+    background:var(--card);flex-shrink:0;
+  }
+  .user-table .u-status{
+    display:inline-block;width:8px;height:8px;border-radius:50%;
+  }
+  .user-table .u-status.online{background:var(--success);}
+  .user-table .u-status.offline{background:var(--muted);opacity:.4;}
+  .tag{
+    display:inline-block;font-size:10px;padding:2px 8px;
+    border-radius:6px;font-weight:600;margin-left:4px;
+  }
+  .tag.banned{background:rgba(239,68,68,.15);color:var(--danger);}
+  .tag.muted{background:rgba(251,191,36,.15);color:var(--warn);}
+
+  /* 操作按钮 */
+  .actions{display:flex;gap:6px;flex-wrap:wrap;}
+  .btn{
+    padding:5px 12px;border:none;border-radius:8px;
+    font-size:11px;font-weight:600;cursor:pointer;
+    transition:opacity .15s;font-family:inherit;
+  }
+  .btn:hover{opacity:.85;}
+  .btn-danger{background:rgba(239,68,68,.15);color:var(--danger);}
+  .btn-warn{background:rgba(251,191,36,.15);color:var(--warn);}
+  .btn-success{background:rgba(74,222,128,.15);color:var(--success);}
+  .btn-info{background:rgba(96,165,250,.15);color:#60a5fa;}
+
+  /* 聊天管理 */
+  .chat-section{margin-bottom:24px;}
+  .chat-section h3{font-size:14px;margin-bottom:12px;color:var(--muted);}
+  .chat-card{
+    background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--radius);padding:20px;
+  }
+  .chat-card p{font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.6;}
+  .chat-card .btn{padding:8px 18px;font-size:12px;}
+
+  /* 统计 */
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-bottom:24px;}
+  .stat-card{
+    background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--radius);padding:20px;
+  }
+  .stat-card .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+  .stat-card .value{font-size:28px;font-weight:700;}
+
+  /* 禁言弹窗 */
+  .modal-overlay{
+    position:fixed;inset:0;z-index:100;
+    background:rgba(0,0,0,.6);backdrop-filter:blur(4px);
+    display:none;align-items:center;justify-content:center;
+  }
+  .modal-overlay.show{display:flex;}
+  .modal{
+    background:var(--surface);border:1px solid var(--line);
+    border-radius:16px;padding:28px;width:360px;box-shadow:var(--shadow);
+  }
+  .modal h3{font-size:16px;margin-bottom:16px;}
+  .modal label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px;}
+  .modal select,.modal input{
+    width:100%;padding:10px 12px;border:1px solid var(--line);
+    border-radius:8px;background:rgba(255,255,255,.05);color:var(--text);
+    font-size:13px;outline:none;margin-bottom:14px;font-family:inherit;
+  }
+  .modal .modal-actions{display:flex;gap:8px;justify-content:flex-end;}
+  .modal .btn{padding:8px 18px;font-size:12px;}
+
+  /* Toast */
+  #toast{
+    position:fixed;top:20px;right:20px;z-index:200;
+    background:var(--surface);border:1px solid var(--line);
+    border-radius:10px;padding:10px 18px;font-size:13px;
+    box-shadow:var(--shadow);opacity:0;transform:translateY(-10px);
+    transition:opacity .2s,transform .2s;
+  }
+  #toast.show{opacity:1;transform:translateY(0);}
+
+  /* 搜索 */
+  .search-bar{
+    margin-bottom:16px;display:flex;gap:8px;
+  }
+  .search-bar input{
+    flex:1;padding:8px 14px;border:1px solid var(--line);
+    border-radius:8px;background:rgba(255,255,255,.05);color:var(--text);
+    font-size:13px;outline:none;font-family:inherit;
+  }
+  .search-bar input:focus{border-color:var(--accent);}
+  .search-bar input::placeholder{color:var(--muted);}
+
+  .tab-content{display:none;}
+  .tab-content.active{display:block;}
+</style>
+</head>
+<body>
+
+<!-- 登录页 -->
+<div class="login-wrap" id="loginWrap">
+  <div class="login-card">
+    <h1>🛡️ 管理员面板</h1>
+    <div class="sub">鼠标大厅 · 管理后台</div>
+    <input id="pwdInput" type="password" placeholder="管理员密码" autocomplete="off">
+    <button id="loginBtn">登 录</button>
+    <div class="err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- 管理面板 -->
+<div class="admin-panel" id="adminPanel">
+  <div class="topbar">
+    <div class="left">
+      <span class="logo">🛡️ 管理员面板</span>
+      <span class="badge">ADMIN</span>
+    </div>
+    <span class="conn off" id="connBadge">未连接</span>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="users">用户管理</div>
+    <div class="tab" data-tab="chat">聊天记录</div>
+    <div class="tab" data-tab="stats">统计</div>
+  </div>
+
+  <div class="content">
+    <!-- 用户管理 -->
+    <div class="tab-content active" id="tab-users">
+      <div class="search-bar">
+        <input id="userSearch" type="text" placeholder="搜索用户名…">
+        <button class="btn btn-info" id="refreshUsers">刷新列表</button>
+      </div>
+      <table class="user-table">
+        <thead>
+          <tr>
+            <th>用户</th>
+            <th>状态</th>
+            <th>注册时间</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="userTableBody"></tbody>
+      </table>
+    </div>
+
+    <!-- 聊天记录 -->
+    <div class="tab-content" id="tab-chat">
+      <div class="chat-section">
+        <h3>大厅聊天记录</h3>
+        <div class="chat-card">
+          <p>清空大厅所有公开聊天记录。此操作不可撤销，所有在线用户的大厅消息将被清除。</p>
+          <button class="btn btn-danger" id="clearHall">清空大厅记录</button>
+        </div>
+      </div>
+      <div class="chat-section">
+        <h3>私聊记录</h3>
+        <div class="chat-card">
+          <p>清空与指定用户相关的所有私聊记录（包括该用户发起和接收的所有私聊）。</p>
+          <div style="display:flex;gap:8px;margin-bottom:14px;">
+            <input id="privateTarget" type="text" placeholder="输入用户名（留空则清空全部私聊记录）" style="flex:1;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.05);color:var(--text);font-size:13px;outline:none;font-family:inherit;">
+          </div>
+          <button class="btn btn-danger" id="clearPrivate">清空私聊记录</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 统计 -->
+    <div class="tab-content" id="tab-stats">
+      <div class="stats-grid" id="statsGrid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 禁言弹窗 -->
+<div class="modal-overlay" id="muteModal">
+  <div class="modal">
+    <h3>禁言用户</h3>
+    <label>用户名</label>
+    <input id="muteUser" type="text" readonly>
+    <label>禁言时长</label>
+    <select id="muteDuration">
+      <option value="60">1 分钟</option>
+      <option value="300" selected>5 分钟</option>
+      <option value="600">10 分钟</option>
+      <option value="1800">30 分钟</option>
+      <option value="3600">1 小时</option>
+      <option value="7200">2 小时</option>
+      <option value="21600">6 小时</option>
+      <option value="86400">24 小时</option>
+    </select>
+    <div class="modal-actions">
+      <button class="btn" style="background:rgba(255,255,255,.1);color:var(--text);" id="muteCancel">取消</button>
+      <button class="btn btn-warn" id="muteConfirm">确认禁言</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(() => {
+  const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`;
+  let ws = null;
+  let users = [];
+
+  const $ = id => document.getElementById(id);
+  const loginWrap = $('loginWrap');
+  const adminPanel = $('adminPanel');
+  const pwdInput = $('pwdInput');
+  const loginBtn = $('loginBtn');
+  const loginErr = $('loginErr');
+  const connBadge = $('connBadge');
+  const userTableBody = $('userTableBody');
+  const userSearch = $('userSearch');
+  const refreshUsers = $('refreshUsers');
+  const toast = $('toast');
+  const muteModal = $('muteModal');
+  const muteUser = $('muteUser');
+  const muteDuration = $('muteDuration');
+  const muteCancel = $('muteCancel');
+  const muteConfirm = $('muteConfirm');
+  const statsGrid = $('statsGrid');
+
+  function showToast(text, duration = 2500) {
+    toast.textContent = text;
+    toast.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => toast.classList.remove('show'), duration);
+  }
+
+  function fmtTime(ts) {
+    if (!ts) return '-';
+    const d = new Date(ts);
+    return `${d.getMonth()+1}/${d.getDate()} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+  }
+
+  function fmtDuration(ms) {
+    if (ms <= 0) return '';
+    const sec = Math.ceil(ms / 1000);
+    if (sec < 60) return sec + '秒';
+    if (sec < 3600) return Math.floor(sec/60) + '分钟';
+    if (sec < 86400) return Math.floor(sec/3600) + '小时';
+    return Math.floor(sec/86400) + '天';
+  }
+
+  // 标签切换
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      tab.classList.add('active');
+      $('tab-' + tab.dataset.tab).classList.add('active');
+    });
+  });
+
+  // 登录
+  loginBtn.addEventListener('click', doLogin);
+  pwdInput.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  pwdInput.focus();
+
+  function doLogin() {
+    const pwd = pwdInput.value.trim();
+    if (!pwd) { loginErr.textContent = '请输入密码'; return; }
+    loginBtn.disabled = true;
+    loginErr.textContent = '';
+    connectAdmin(pwd);
+  }
+
+  function connectAdmin(password) {
+    try {
+      ws = new WebSocket(WS_URL);
+    } catch {
+      loginErr.textContent = '连接失败，请刷新重试';
+      loginBtn.disabled = false;
+      return;
+    }
+
+    ws.addEventListener('open', () => {
+      ws.send(JSON.stringify({ type: 'admin_login', password }));
+    });
+
+    ws.addEventListener('message', ev => {
+      let m;
+      try { m = JSON.parse(ev.data); } catch { return; }
+      switch (m.type) {
+        case 'admin_ok':
+          if (m.ok) {
+            loginWrap.classList.add('hidden');
+            adminPanel.classList.add('show');
+            connBadge.textContent = '已连接';
+            connBadge.className = 'conn on';
+            showToast('登录成功');
+          } else {
+            loginErr.textContent = m.msg || '密码错误';
+            loginBtn.disabled = false;
+          }
+          break;
+        case 'admin_users':
+          users = m.users || [];
+          renderUsers();
+          renderStats();
+          break;
+        case 'admin_err':
+          showToast('❌ ' + (m.msg || '操作失败'));
+          break;
+        case 'banned':
+        case 'kick':
+          showToast('⚠️ ' + (m.msg || '连接被断开'));
+          break;
+      }
+    });
+
+    ws.addEventListener('close', () => {
+      connBadge.textContent = '已断开';
+      connBadge.className = 'conn off';
+      showToast('与服务器的连接已断开');
+    });
+
+    ws.addEventListener('error', () => {
+      loginErr.textContent = '连接失败，请刷新重试';
+      loginBtn.disabled = false;
+    });
+  }
+
+  function send(obj) {
+    if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj));
+  }
+
+  // 渲染用户列表
+  function renderUsers() {
+    const q = userSearch.value.trim().toLowerCase();
+    const filtered = q ? users.filter(u => u.username.toLowerCase().includes(q)) : users;
+    userTableBody.innerHTML = '';
+    const now = Date.now();
+
+    for (const u of filtered) {
+      const tr = document.createElement('tr');
+      const avatar = u.avatarEmoji || '👤';
+      let statusHtml = `<span class="u-status ${u.online ? 'online' : 'offline'}"></span>`;
+      let tagsHtml = '';
+      if (u.banned) tagsHtml += '<span class="tag banned">已封禁</span>';
+      if (u.muted && u.mutedUntil > now) tagsHtml += `<span class="tag muted">禁言 ${fmtDuration(u.mutedUntil - now)}</span>`;
+
+      let actionsHtml = '';
+      if (u.banned) {
+        actionsHtml += `<button class="btn btn-success" onclick="adminUnban('${u.username}')">解封</button>`;
+      } else {
+        actionsHtml += `<button class="btn btn-danger" onclick="adminBan('${u.username}')">封号</button>`;
+        actionsHtml += `<button class="btn btn-warn" onclick="adminMute('${u.username}')">禁言</button>`;
+        if (u.online) actionsHtml += `<button class="btn btn-info" onclick="adminKick('${u.username}')">踢下线</button>`;
+      }
+
+      tr.innerHTML = `
+        <td>
+          <div class="u-name">
+            <span class="u-avatar">${avatar}</span>
+            <span>${u.username}</span>
+            ${u.online ? '<span style="font-size:10px;color:var(--success);">在线</span>' : ''}
+          </div>
+        </td>
+        <td>${statusHtml} ${tagsHtml}</td>
+        <td style="color:var(--muted);font-size:12px;">${fmtTime(u.createdAt)}</td>
+        <td><div class="actions">${actionsHtml}</div></td>
+      `;
+      userTableBody.appendChild(tr);
+    }
+  }
+
+  function renderStats() {
+    const total = users.length;
+    const online = users.filter(u => u.online).length;
+    const banned = users.filter(u => u.banned).length;
+    const muted = users.filter(u => u.muted && u.mutedUntil > Date.now()).length;
+    statsGrid.innerHTML = `
+      <div class="stat-card"><div class="label">总用户数</div><div class="value">${total}</div></div>
+      <div class="stat-card"><div class="label">当前在线</div><div class="value" style="color:var(--success)">${online}</div></div>
+      <div class="stat-card"><div class="label">已封禁</div><div class="value" style="color:var(--danger)">${banned}</div></div>
+      <div class="stat-card"><div class="label">禁言中</div><div class="value" style="color:var(--warn)">${muted}</div></div>
+    `;
+  }
+
+  // 搜索
+  userSearch.addEventListener('input', renderUsers);
+  refreshUsers.addEventListener('click', () => send({ type: 'admin_users' }));
+
+  // 全局操作函数
+  window.adminBan = function(username) {
+    if (!confirm(`确定封禁用户「${username}」？该用户将无法登录。`)) return;
+    send({ type: 'admin_ban', username });
+    showToast(`已封禁用户「${username}」`);
+  };
+
+  window.adminUnban = function(username) {
+    send({ type: 'admin_unban', username });
+    showToast(`已解封用户「${username}」`);
+  };
+
+  window.adminMute = function(username) {
+    muteUser.value = username;
+    muteModal.classList.add('show');
+  };
+
+  window.adminKick = function(username) {
+    if (!confirm(`确定将用户「${username}」踢下线？`)) return;
+    send({ type: 'admin_kick', username });
+    showToast(`已将「${username}」踢下线`);
+  };
+
+  muteCancel.addEventListener('click', () => muteModal.classList.remove('show'));
+  muteConfirm.addEventListener('click', () => {
+    const username = muteUser.value;
+    const duration = Number(muteDuration.value);
+    send({ type: 'admin_mute', username, duration });
+    muteModal.classList.remove('show');
+    showToast(`已禁言「${username}」 ${muteDuration.options[muteDuration.selectedIndex].text}`);
+  });
+
+  // 清空聊天记录
+  $('clearHall').addEventListener('click', () => {
+    if (!confirm('确定清空所有大厅聊天记录？此操作不可撤销！')) return;
+    send({ type: 'admin_delete_hall' });
+    showToast('大厅聊天记录已清空');
+  });
+
+  $('clearPrivate').addEventListener('click', () => {
+    const target = $('privateTarget').value.trim();
+    const msg = target ? `确定清空与「${target}」相关的所有私聊记录？` : '确定清空所有私聊记录？此操作不可撤销！';
+    if (!confirm(msg)) return;
+    send({ type: 'admin_delete_private', username: target || '' });
+    showToast(target ? `已清空与「${target}」的私聊记录` : '所有私聊记录已清空');
+  });
+})();
+</script>
+</body>
+</html>

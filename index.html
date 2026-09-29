@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>鼠标大厅</title>
+  <link rel="icon" href="static/img/logo.png" type="image/png">
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <div id="stage">
+    <div class="hint-text" id="hintText">
+      移动鼠标，与其他光标一起漫游<br>
+      打开 <b>多个窗口</b> 即可体验多人同步
+    </div>
+  </div>
+
+  <div id="cursors"></div>
+
+  <!-- 整体外壳 -->
+  <div id="shell" class="hidden">
+
+    <!-- 左侧会话列表 -->
+    <aside id="sidebar">
+      <div class="sb-header">
+        <div>
+          <div class="sb-title"><span class="dot off" id="connDot"></span>会话</div>
+          <div class="sb-sub" id="onlineBadge">0 在线</div>
+        </div>
+        <div class="me" id="meBtn" title="账号设置">
+          <span class="avatar" id="meAvatar">我</span>
+          <button class="me-btn" type="button">⚙</button>
+          <div class="me-menu" id="meMenu" role="menu">
+            <button type="button" id="btnAvatar">更换头像</button>
+            <button type="button" id="btnUser">修改用户名</button>
+            <button type="button" id="btnChangePwd">修改密码</button>
+            <div class="c-div" style="height:1px;background:var(--line);margin:4px 0;"></div>
+            <button type="button" id="btnLogout" class="danger">退出登录</button>
+          </div>
+        </div>
+      </div>
+      <div class="sb-search">
+        <input id="sbSearch" placeholder="搜索会话…" autocomplete="off">
+      </div>
+      <div class="sb-list" id="sbList"></div>
+      <div class="sb-footer">
+        <button type="button" id="sbFriendBtn" class="sb-friend-btn" title="我的好友">
+          <span class="sb-friend-icon">👥</span>
+          <span>我的好友</span>
+          <span class="sb-friend-count" id="sbFriendCount" style="display:none;">0</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- 中间聊天 -->
+    <main id="chatMain">
+      <div class="chat-header">
+        <div class="left">
+          <div class="h-avatar" id="hAvatar"></div>
+          <div>
+            <div class="h-name" id="hName">鼠标大厅</div>
+            <div class="h-sub" id="hSub">所有人的公共聊天</div>
+          </div>
+        </div>
+        <div class="users-toggle" id="usersToggle">
+          <span>👥</span>
+          <span>在线成员</span>
+        </div>
+      </div>
+
+      <div class="chat-body" id="chatBody"></div>
+
+      <div class="qbar" id="quoteBar">
+        <span class="qbar-label">回复 <b id="qbarName"></b><span class="qbar-text" id="qbarText"></span></span>
+        <button class="qbar-cancel" id="qbarCancel" type="button">✕</button>
+      </div>
+
+      <div class="chat-footer" id="chatFooter">
+        <div class="at-dropdown" id="atDropdown"></div>
+        <div class="code-input-wrap" id="codeInputWrap" style="display:none">
+          <textarea id="codeInput" class="code-textarea" placeholder="输入代码…（最多 5000 字）" maxlength="5000" rows="6"></textarea>
+          <div class="code-actions">
+            <span class="code-char-count" id="codeCharCount">0/5000</span>
+            <div class="code-right-actions">
+              <span class="code-shortcut-hint">Ctrl+Enter 发送</span>
+              <button class="code-cancel-btn" id="codeCancel" type="button">取消</button>
+              <button class="code-send-btn" id="codeSend" type="button">发送代码</button>
+            </div>
+          </div>
+        </div>
+        <input id="input" type="text" placeholder="说点什么… 输入 @ 艾特在线用户" maxlength="500" autocomplete="off">
+        <button id="codeBtn" class="code-btn" type="button" title="发送代码">&lt;/&gt;</button>
+        <button id="sendBtn">发送</button>
+      </div>
+    </main>
+  </div>
+
+  <!-- 在线用户面板（右侧抽屉） -->
+  <div class="users-panel" id="usersPanel"
+    style="position:fixed;right:0;top:0;bottom:0;z-index:30;width:240px;background:var(--panel-solid);border-left:1px solid var(--line);box-shadow:var(--shadow);padding:20px 16px;transform:translateX(100%);transition:transform .3s cubic-bezier(.22,1,.36,1);overflow-y:auto;">
+    <div class="up-title"
+      style="font-size:13px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;">
+      <span>在线成员</span>
+      <span class="up-close" id="usersPanelClose"
+        style="cursor:pointer;color:var(--muted);font-size:16px;padding:2px 6px;border-radius:4px;">✕</span>
+    </div>
+    <div id="usersList"></div>
+  </div>
+
+  <!-- 登录遮罩 -->
+  <div id="overlay">
+    <div class="card">
+      <h1>鼠标大厅</h1>
+      <div class="sub">在这里，每个光标都是一个真实的人</div>
+      <div class="tabs">
+        <div class="tab active" data-tab="login">登录</div>
+        <div class="tab" data-tab="register">注册</div>
+      </div>
+
+      <div class="panel active" id="panel-login">
+        <div class="form-row">
+          <label>用户名</label>
+          <input id="loginUser" type="text" autocomplete="username" maxlength="16">
+        </div>
+        <div class="form-row">
+          <label>密码</label>
+          <div class="pw-wrap">
+            <input id="loginPwd" type="password" autocomplete="current-password" maxlength="64">
+            <button type="button" class="pw-toggle" data-target="loginPwd">显示</button>
+          </div>
+        </div>
+        <div class="err" id="loginErr"></div>
+        <button class="primary" id="loginBtn">登录并进入</button>
+      </div>
+
+      <div class="panel" id="panel-register">
+        <div class="form-row">
+          <label>用户名（2-16 位，字母/数字/中文/下划线）</label>
+          <input id="regUser" type="text" autocomplete="username" maxlength="16">
+        </div>
+        <div class="form-row">
+          <label>密码（至少 6 位）</label>
+          <div class="pw-wrap">
+            <input id="regPwd" type="password" autocomplete="new-password" maxlength="64">
+            <button type="button" class="pw-toggle" data-target="regPwd">显示</button>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>确认密码</label>
+          <div class="pw-wrap">
+            <input id="regPwd2" type="password" autocomplete="new-password" maxlength="64">
+            <button type="button" class="pw-toggle" data-target="regPwd2">显示</button>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>人机验证</label>
+          <div class="captcha-row">
+            <img id="captchaImg" class="captcha-img" alt="验证码" title="点击换一张" height="40">
+            <input id="regCaptcha" type="text" placeholder="输入图中字符" maxlength="6" autocomplete="off">
+            <button type="button" id="captchaRefresh" class="captcha-refresh" title="换一张">↻</button>
+          </div>
+        </div>
+        <div class="err" id="regErr"></div>
+        <button class="primary" id="regBtn">创建账号并进入</button>
+      </div>
+
+      <div class="hint" id="overlayHint">公告：服务器重启，需要重新注册。</div>
+    </div>
+  </div>
+
+  <!-- 右键菜单 -->
+  <div id="ctxMenu"></div>
+
+  <!-- 修改密码模态 -->
+  <div class="modal" id="pwdModal">
+    <div class="m-card">
+      <h3>修改密码</h3>
+      <div class="m-sub">输入原密码验证身份</div>
+      <div class="row"><label>原密码</label><input id="oldPwd" type="password" maxlength="64"></div>
+      <div class="row"><label>新密码（至少 6 位）</label><input id="newPwd" type="password" maxlength="64"></div>
+      <div class="row"><label>确认新密码</label><input id="newPwd2" type="password" maxlength="64"></div>
+      <div class="m-err" id="pwdErr"></div>
+      <div class="m-actions">
+        <button type="button" class="btn-cancel" id="pwdCancel">取消</button>
+        <button type="button" class="btn-ok" id="pwdSubmit">确认修改</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 更换头像模态 -->
+  <div class="modal" id="avModal">
+    <div class="m-card">
+      <h3>更换头像</h3>
+      <div class="m-sub">上传本地图片，或选一个 Emoji + 颜色</div>
+      <div class="av-preview" id="avPreview">A</div>
+      <div class="row"><label>📁 上传本地图片（JPG / PNG / WebP，≤ 2MB）</label>
+        <div class="upload-row">
+          <button type="button" class="upload-btn" id="avUploadBtn">📁 选择本地图片…</button>
+          <input type="file" id="avFile" accept="image/jpeg,image/png,image/webp" style="display:none;">
+        </div>
+      </div>
+      <div class="row"><label>选择 Emoji</label>
+        <div class="emoji-row" id="emojiRow"></div>
+      </div>
+      <div class="row"><label>底色</label>
+        <div class="color-row">
+          <input type="color" id="colorPicker" value="#8aa9c9">
+          <div style="flex:1;">
+            <button type="button" style="background:#8aa9c9" class="preset-btn"></button>
+            <button type="button" style="background:#a7c58f" class="preset-btn"></button>
+            <button type="button" style="background:#e0a07a" class="preset-btn"></button>
+            <button type="button" style="background:#c9a7ca" class="preset-btn"></button>
+            <button type="button" style="background:#86b7b8" class="preset-btn"></button>
+            <button type="button" style="background:#d89aa0" class="preset-btn"></button>
+          </div>
+        </div>
+      </div>
+      <div class="m-err" id="avErr"></div>
+      <div class="m-actions">
+        <button type="button" class="btn-cancel" id="avCancel">取消</button>
+        <button type="button" class="btn-ok" id="avSubmit">保存头像</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 修改用户名模态 -->
+  <div class="modal" id="userModal">
+    <div class="m-card">
+      <h3>修改用户名</h3>
+      <div class="m-sub">需输入密码验证，修改后所有会话昵称会同步更新</div>
+      <div class="row"><label>新用户名（2-16 位）</label><input id="newUser" type="text" maxlength="16"></div>
+      <div class="row"><label>当前密码</label><input id="userPwd" type="password" maxlength="64"></div>
+      <div class="m-err" id="userErr"></div>
+      <div class="m-actions">
+        <button type="button" class="btn-cancel" id="userCancel">取消</button>
+        <button type="button" class="btn-ok" id="userSubmit">确认修改</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 好友模态：只保留好友列表 -->
+  <div class="modal" id="frModal">
+    <div class="m-card" style="width:360px;">
+      <h3>我的好友</h3>
+      <div class="m-sub">发一条私聊消息就会自动成为好友</div>
+      <div class="fr-panel active" data-fr-panel="list" id="frListPanel" style="max-height:340px;overflow-y:auto;margin-top:10px;"></div>
+      <div class="m-actions">
+        <button type="button" class="btn-cancel" id="frCancel">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script src="script.js"></script>
+</body>
+
+</html>

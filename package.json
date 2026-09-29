@@ -1,0 +1,10 @@
+{
+  "name": "mouse-hall",
+  "version": "2.0.0",
+  "description": "鼠标大厅 - WebSocket 实时多人鼠标同步",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
